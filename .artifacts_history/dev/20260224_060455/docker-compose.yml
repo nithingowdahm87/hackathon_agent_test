@@ -9,7 +9,7 @@ services:
     depends_on:
     - backend_java/gateway_service
     environment:
-    - GATEWAY_SERVICE_URL=${GATEWAY_SERVICE_URL}
+    - ALERT_SERVICE_URL=${ALERT_SERVICE_URL}
     healthcheck:
       interval: 10s
       retries: 3
@@ -47,7 +47,7 @@ services:
     depends_on:
     - backend_java/gateway_service
     environment:
-    - GATEWAY_SERVICE_URL=${GATEWAY_SERVICE_URL}
+    - CCTV_SERVICE_URL=${CCTV_SERVICE_URL}
     healthcheck:
       interval: 10s
       retries: 3
@@ -66,8 +66,8 @@ services:
     - backend_java/auth_service
     - redis
     environment:
+    - GATEWAY_SERVICE_URL=${GATEWAY_SERVICE_URL}
     - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
-    - REDIS_URL=${REDIS_URL}
     healthcheck:
       interval: 10s
       retries: 3
@@ -85,7 +85,7 @@ services:
     depends_on:
     - backend_java/gateway_service
     environment:
-    - GATEWAY_SERVICE_URL=${GATEWAY_SERVICE_URL}
+    - POWER_SERVICE_URL=${POWER_SERVICE_URL}
     healthcheck:
       interval: 10s
       retries: 3
@@ -103,7 +103,7 @@ services:
     depends_on:
     - backend_java/gateway_service
     environment:
-    - GATEWAY_SERVICE_URL=${GATEWAY_SERVICE_URL}
+    - TRAFFIC_SERVICE_URL=${TRAFFIC_SERVICE_URL}
     healthcheck:
       interval: 10s
       retries: 3
@@ -138,7 +138,7 @@ services:
     depends_on:
     - frontend_reactjs
     - python
-    image: nginx:1.21
+    image: nginx:latest
     networks:
     - frontend-net
     ports:
@@ -182,8 +182,6 @@ services:
     ports:
     - 8000:8000
   redis:
-    environment:
-    - REDIS_PASSWORD=${REDIS_PASSWORD}
     healthcheck:
       interval: 10s
       retries: 3
