@@ -1,0 +1,127 @@
+.github/workflows/main.yml
+name: EKS Deployment Pipeline
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      # Compile code
+      - name: Compile
+        run: |
+          # Compile command
+          make build
+  secrets-scan:
+    runs-on: ubuntu-latest
+    needs: [compile]
+    steps:
+      # Scan for secrets
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        # Security comment: Scanning for secrets using Gitleaks
+  trivy-fs:
+    runs-on: ubuntu-latest
+    needs: [secrets-scan]
+    steps:
+      # Trivy file system scan
+      - name: Trivy FS Scan
+        run: |
+          # Trivy FS scan command
+          trivy fs .
+  sonar:
+    runs-on: ubuntu-latest
+    needs: [trivy-fs]
+    steps:
+      # Sonar scan
+      - name: Sonar Scan
+        run: |
+          # Sonar scan command
+          sonar-scanner
+  owasp-zap:
+    runs-on: ubuntu-latest
+    needs: [sonar]
+    steps:
+      # OWASP ZAP scan
+      - name: OWASP ZAP Scan
+        run: |
+          # OWASP ZAP scan command
+          zap-scan
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [owasp-zap]
+    steps:
+      # Docker login
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+        # Security comment: Logging in to Docker Hub using OIDC
+      # Docker build and push
+      - name: Docker Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: myapp:sha-${{ github.sha }}
+          provenance: false
+        # Security comment: Building and pushing Docker image with provenance set to false
+  trivy-image:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      # Trivy image scan
+      - name: Trivy Image Scan
+        run: |
+          # Trivy image scan command
+          trivy image myapp:sha-${{ github.sha }}
+  notify:
+    runs-on: ubuntu-latest
+    needs: [trivy-image]
+    if: always()
+    steps:
+      # Notify on Slack
+      - name: Notify on Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          slack-token: ${{ secrets.SLACK_TOKEN }}
+          channel: my-channel
+          message: |
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            SHA: ${{ github.sha }}
+            Job Status: ${{ job.status }}
+        # Security comment: Notifying on Slack using OIDC
+      # Notify on Email
+      - name: Notify on Email
+        uses: dawidd6/action-send-mail@v6
+        with:
+          server: ${{ secrets.EMAIL_SERVER }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          to: my-email
+          subject: Pipeline Notification
+          body: |
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            SHA: ${{ github.sha }}
+            Job Status: ${{ job.status }}
+        # Security comment: Notifying on Email using OIDC
+# Secrets reference table
+# | Secret Name | Description |
+# | --- | --- |
+# | DOCKER_USERNAME | Docker Hub username |
+# | DOCKER_PASSWORD | Docker Hub password |
+# | SLACK_TOKEN | Slack token |
+# | EMAIL_SERVER | Email server |
+# | EMAIL_USERNAME | Email username |
+# | EMAIL_PASSWORD | Email password |
